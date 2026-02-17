@@ -50,9 +50,33 @@ const COMPANY_KEY = "batchidpro_companies";
 const DEFAULT_SPECIES = ["Cod","Haddock","Hake","Whiting","Monkfish","Scallops","Mackerel","Herring","Plaice","Sole","Nephrops (Prawns)","Pollock","Skate"];
 const DEFAULT_COMPANIES = ["Portavogie Fish Co.","Ards Marine","Lough Catch Ltd","North Coast Supplies","Kilkeel Seafoods","Belfast Cold Store","McIlroy Logistics","NI Reefer Haulage","SeaChain Transport","ColdRun Ltd"];
 
-function ls(key: string): string { try { return window.localStorage.getItem(key) || ""; } catch(e) { return ""; } }
-function lsSet(key: string, val: string) { try { window.localStorage.setItem(key, val); } catch(e) { /* ignore */ } }
-function lsJson<T>(key: string, fallback: T): T { try { const v = ls(key); return v ? JSON.parse(v) : fallback; } catch(e) { return fallback; } }
+// ---------- localStorage helpers (BUILD-SAFE) ----------
+function lsGet(key: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function lsSet(key: string, val: string): void {
+  try {
+    window.localStorage.setItem(key, val);
+  } catch {
+    // ignore
+  }
+}
+
+function lsJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = lsGet(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+catch(e) { return fallback; } }
 
 function loadBatches(): Batch[] { return lsJson<Batch[]>(STORAGE_KEY, []); }
 function saveBatches(b: Batch[]) { lsSet(STORAGE_KEY, JSON.stringify(b)); }
