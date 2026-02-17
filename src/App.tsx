@@ -1,5 +1,5 @@
 // Batch ID Pro — Fresh Build
-// QR codes point to standalone resolver at batch.coresystemsni.com
+// QR codes point to standalone resolver at batch-id-pro-mi3x.vercel.app/b/:id
 // No hash routing, no BrowserRouter, no conflicts.
 
 import { useState, useMemo, useCallback, useEffect } from "react";
@@ -32,6 +32,8 @@ function lsJson<T>(key: string, fallback: T): T {
   }
 }
 /* ------------------------------------------------------ */
+
+
 
 // ─── RESOLVER URL ────────────────────────────────────────────────────────────
 // QR codes ALWAYS point to the live deployed domain so phones can scan them.
@@ -78,6 +80,25 @@ const COMPANY_KEY = "batchidpro_companies";
 const DEFAULT_SPECIES = ["Cod","Haddock","Hake","Whiting","Monkfish","Scallops","Mackerel","Herring","Plaice","Sole","Nephrops (Prawns)","Pollock","Skate"];
 const DEFAULT_COMPANIES = ["Portavogie Fish Co.","Ards Marine","Lough Catch Ltd","North Coast Supplies","Kilkeel Seafoods","Belfast Cold Store","McIlroy Logistics","NI Reefer Haulage","SeaChain Transport","ColdRun Ltd"];
 
+// ---------- localStorage helpers (BUILD-SAFE) ----------
+function lsGet(key: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function lsJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = lsGet(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 function loadBatches(): Batch[] { return lsJson<Batch[]>(STORAGE_KEY, []); }
 function saveBatches(b: Batch[]) { lsSet(STORAGE_KEY, JSON.stringify(b)); }
 
@@ -101,6 +122,8 @@ function encodeBatch(batch: Batch): string {
 // ─── LOGO / BRANDING ─────────────────────────────────────────────────────────
 const LOGO_URL = "https://res.cloudinary.com/dmnuqcykq/image/upload/v1770027904/ChatGPT_Image_Feb_2_2026_10_24_54_AM_f99qva.png";
 const APP_NAME = "Batch ID Pro";
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 
 // ─── PUBLIC RECEIPT PAGE ─────────────────────────────────────────────────────
 function PublicReceipt({ batch }: { batch: any }) {
@@ -257,7 +280,7 @@ export default function App() {
   const [batchTab, setBatchTab] = useState<BatchStatus>("Created");
 
   useEffect(() => { saveBatches(batches); }, [batches]);
-  useEffect(() => { lsSet(SPECIES_KEY, JSON.stringify(speciesLibrary)); }, [speciesLibrary]);
+  useEffect(() => { lsSet(SPECIES_KEY, JSON.stringify(_speciesLibrary)); }, [speciesLibrary]);
   useEffect(() => { lsSet(COMPANY_KEY, JSON.stringify(companyLibrary)); }, [companyLibrary]);
 
   const addToast = useCallback((type: Toast["type"], message: string) => {
@@ -545,7 +568,9 @@ function CreateDocketView({batchType,createBatch,speciesLibrary,companyLibrary,a
 }
 
 // ─── BATCH DETAIL ─────────────────────────────────────────────────────────────
-function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,closeBatch,addToast,speciesLibrary,companyLibrary}:any) {
+function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,closeBatch,addToast,_speciesLibrary,_companyLibrary}:any) {
+  void _speciesLibrary;
+  void _companyLibrary;
   const [landingCertNo,setLandingCertNo] = useState(batch.landingCertNo||"");
   const [processingCertNo,setProcessingCertNo] = useState(batch.processingCertNo||"");
   const [catchCertNo,setCatchCertNo] = useState(batch.catchCertNo||"");
