@@ -1,9 +1,37 @@
 // Batch ID Pro — Fresh Build
-// QR codes point to standalone resolver at batch-id-pro-mi3x.vercel.app/b/:id
+// QR codes point to standalone resolver at batch.coresystemsni.com
 // No hash routing, no BrowserRouter, no conflicts.
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
+
+/* ---------- localStorage helpers (BUILD-SAFE) ---------- */
+function ls(key: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function lsSet(key: string, val: string): void {
+  try {
+    window.localStorage.setItem(key, val);
+  } catch {
+    // ignore
+  }
+}
+
+function lsJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = ls(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+/* ------------------------------------------------------ */
 
 // ─── RESOLVER URL ────────────────────────────────────────────────────────────
 // QR codes ALWAYS point to the live deployed domain so phones can scan them.
@@ -50,42 +78,14 @@ const COMPANY_KEY = "batchidpro_companies";
 const DEFAULT_SPECIES = ["Cod","Haddock","Hake","Whiting","Monkfish","Scallops","Mackerel","Herring","Plaice","Sole","Nephrops (Prawns)","Pollock","Skate"];
 const DEFAULT_COMPANIES = ["Portavogie Fish Co.","Ards Marine","Lough Catch Ltd","North Coast Supplies","Kilkeel Seafoods","Belfast Cold Store","McIlroy Logistics","NI Reefer Haulage","SeaChain Transport","ColdRun Ltd"];
 
-// ---------- localStorage helpers (BUILD-SAFE) ----------
-function lsGet(key: string): string {
-  try {
-    return window.localStorage.getItem(key) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function lsSet(key: string, val: string): void {
-  try {
-    window.localStorage.setItem(key, val);
-  } catch {
-    // ignore
-  }
-}
-
-function lsJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = lsGet(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-catch(e) { return fallback; } }
-
 function loadBatches(): Batch[] { return lsJson<Batch[]>(STORAGE_KEY, []); }
 function saveBatches(b: Batch[]) { lsSet(STORAGE_KEY, JSON.stringify(b)); }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(16).slice(2,10).toUpperCase();
 const nowISO = () => new Date().toISOString();
-const fmtDate = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch(e) { return s; } };
-const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch(e) { return s; } };
+const fmtDate = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch (e) { return s; } };
+const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch (e) { return s; } };
 const cap = (s: string) => s ? s[0].toUpperCase()+s.slice(1) : s;
 const round2 = (n: number) => Math.round(n*100)/100;
 const totalKg = (b: Batch) => round2((b.speciesLines||[]).reduce((a,l)=>a+(+l.weightKg||0),0));
@@ -95,20 +95,18 @@ function encodeBatch(batch: Batch): string {
   try {
     const d = { id:batch.id, batchType:batch.batchType, status:batch.status, createdAt:batch.createdAt, fromCompany:batch.fromCompany, toCompany:batch.toCompany, vesselRef:batch.vesselRef, orderDate:batch.orderDate, lotRef:batch.lotRef, notes:batch.notes, speciesLines:batch.speciesLines, transportLegs:(batch.transportLegs||[]).map(l=>({transportCompany:l.transportCompany,vehicleReg:l.vehicleReg,handoverTime:l.handoverTime,notes:l.notes})), landingCertNo:batch.landingCertNo, processingCertNo:batch.processingCertNo, catchCertNo:batch.catchCertNo, healthCertNo:batch.healthCertNo, landingPort:batch.landingPort, processingPlant:batch.processingPlant };
     return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(d)))));
-  } catch(e) { return ""; }
+  } catch (e) { return ""; }
 }
 
 // ─── LOGO / BRANDING ─────────────────────────────────────────────────────────
 const LOGO_URL = "https://res.cloudinary.com/dmnuqcykq/image/upload/v1770027904/ChatGPT_Image_Feb_2_2026_10_24_54_AM_f99qva.png";
 const APP_NAME = "Batch ID Pro";
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
-
 // ─── PUBLIC RECEIPT PAGE ─────────────────────────────────────────────────────
 function PublicReceipt({ batch }: { batch: any }) {
   const LOGO = "https://res.cloudinary.com/dmnuqcykq/image/upload/v1770027904/ChatGPT_Image_Feb_2_2026_10_24_54_AM_f99qva.png";
-  const fmtD = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch(e) { return s||"—"; }};
-  const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch(e) { return s||"—"; }};
+  const fmtD = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch (e) { return s||"—"; }};
+  const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch (e) { return s||"—"; }};
   const totalW = ((batch.speciesLines||[]).reduce((a:number,l:any)=>a+(+l.weightKg||0),0)).toFixed(2);
   const hasCerts = batch.landingCertNo||batch.processingCertNo||batch.catchCertNo||batch.healthCertNo;
   const css = `
