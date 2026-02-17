@@ -33,8 +33,6 @@ function lsJson<T>(key: string, fallback: T): T {
 }
 /* ------------------------------------------------------ */
 
-
-
 // ─── RESOLVER URL ────────────────────────────────────────────────────────────
 // QR codes ALWAYS point to the live deployed domain so phones can scan them.
 // Even when running locally, QR codes point to the production URL.
@@ -80,33 +78,14 @@ const COMPANY_KEY = "batchidpro_companies";
 const DEFAULT_SPECIES = ["Cod","Haddock","Hake","Whiting","Monkfish","Scallops","Mackerel","Herring","Plaice","Sole","Nephrops (Prawns)","Pollock","Skate"];
 const DEFAULT_COMPANIES = ["Portavogie Fish Co.","Ards Marine","Lough Catch Ltd","North Coast Supplies","Kilkeel Seafoods","Belfast Cold Store","McIlroy Logistics","NI Reefer Haulage","SeaChain Transport","ColdRun Ltd"];
 
-// ---------- localStorage helpers (BUILD-SAFE) ----------
-function lsGet(key: string): string {
-  try {
-    return window.localStorage.getItem(key) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function lsJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = lsGet(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function loadBatches(): Batch[] { return lsJson<Batch[]>(STORAGE_KEY, []); }
 function saveBatches(b: Batch[]) { lsSet(STORAGE_KEY, JSON.stringify(b)); }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(16).slice(2,10).toUpperCase();
 const nowISO = () => new Date().toISOString();
-const fmtDate = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch (e) { return s; } };
-const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch (e) { return s; } };
+const fmtDate = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch { return s; } };
+const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch { return s; } };
 const cap = (s: string) => s ? s[0].toUpperCase()+s.slice(1) : s;
 const round2 = (n: number) => Math.round(n*100)/100;
 const totalKg = (b: Batch) => round2((b.speciesLines||[]).reduce((a,l)=>a+(+l.weightKg||0),0));
@@ -116,20 +95,18 @@ function encodeBatch(batch: Batch): string {
   try {
     const d = { id:batch.id, batchType:batch.batchType, status:batch.status, createdAt:batch.createdAt, fromCompany:batch.fromCompany, toCompany:batch.toCompany, vesselRef:batch.vesselRef, orderDate:batch.orderDate, lotRef:batch.lotRef, notes:batch.notes, speciesLines:batch.speciesLines, transportLegs:(batch.transportLegs||[]).map(l=>({transportCompany:l.transportCompany,vehicleReg:l.vehicleReg,handoverTime:l.handoverTime,notes:l.notes})), landingCertNo:batch.landingCertNo, processingCertNo:batch.processingCertNo, catchCertNo:batch.catchCertNo, healthCertNo:batch.healthCertNo, landingPort:batch.landingPort, processingPlant:batch.processingPlant };
     return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(d)))));
-  } catch (e) { return ""; }
+  } catch { return ""; }
 }
 
 // ─── LOGO / BRANDING ─────────────────────────────────────────────────────────
 const LOGO_URL = "https://res.cloudinary.com/dmnuqcykq/image/upload/v1770027904/ChatGPT_Image_Feb_2_2026_10_24_54_AM_f99qva.png";
 const APP_NAME = "Batch ID Pro";
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
-
 // ─── PUBLIC RECEIPT PAGE ─────────────────────────────────────────────────────
 function PublicReceipt({ batch }: { batch: any }) {
   const LOGO = "https://res.cloudinary.com/dmnuqcykq/image/upload/v1770027904/ChatGPT_Image_Feb_2_2026_10_24_54_AM_f99qva.png";
-  const fmtD = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch (e) { return s||"—"; }};
-  const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch (e) { return s||"—"; }};
+  const fmtD = (s: string) => { try { return new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"2-digit"}); } catch { return s||"—"; }};
+  const fmtDT = (s: string) => { try { return new Date(s).toLocaleString(undefined,{year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch { return s||"—"; }};
   const totalW = ((batch.speciesLines||[]).reduce((a:number,l:any)=>a+(+l.weightKg||0),0)).toFixed(2);
   const hasCerts = batch.landingCertNo||batch.processingCertNo||batch.catchCertNo||batch.healthCertNo;
   const css = `
@@ -225,11 +202,8 @@ function PublicReceipt({ batch }: { batch: any }) {
 
 export default function App() {
   // ── Receipt route detection ──
-  // QR codes encode: https://batch.coresystemsni.com/?receipt=ID&d=ENCODED
-  // We check for ?receipt= param first — if present, render the receipt page.
   if (typeof window !== "undefined") {
     const params = new URLSearchParams(window.location.search);
-
     const receiptId = params.get("receipt");
     const encoded = params.get("d");
 
@@ -245,7 +219,6 @@ export default function App() {
         }
       }
 
-      // Has receipt ID but data is missing or broken
       return (
         <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#0b1220", padding: 24 }}>
           <div style={{ maxWidth: 560, width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: 18 }}>
@@ -280,7 +253,7 @@ export default function App() {
   const [batchTab, setBatchTab] = useState<BatchStatus>("Created");
 
   useEffect(() => { saveBatches(batches); }, [batches]);
-  useEffect(() => { lsSet(SPECIES_KEY, JSON.stringify(_speciesLibrary)); }, [speciesLibrary]);
+  useEffect(() => { lsSet(SPECIES_KEY, JSON.stringify(speciesLibrary)); }, [speciesLibrary]);
   useEffect(() => { lsSet(COMPANY_KEY, JSON.stringify(companyLibrary)); }, [companyLibrary]);
 
   const addToast = useCallback((type: Toast["type"], message: string) => {
@@ -495,7 +468,6 @@ function CreateDocketView({batchType,createBatch,speciesLibrary,companyLibrary,a
 
         <div style={S.divider} />
 
-        {/* Species */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <h3 style={{fontSize:14,fontWeight:800}}>Species & Weights *</h3>
           <button style={{...S.btn,fontSize:11,padding:"6px 10px"}} onClick={addSpecies}>+ Add Species</button>
@@ -518,7 +490,6 @@ function CreateDocketView({batchType,createBatch,speciesLibrary,companyLibrary,a
 
         <div style={S.divider} />
 
-        {/* Compliance toggle */}
         <button style={{...S.btn,...S.btnSecondary,width:"100%",marginBottom:12}} onClick={()=>setShowCompliance(p=>!p)}>
           {showCompliance?"▲":"▼"} Compliance / Traceability Fields (optional)
         </button>
@@ -532,7 +503,6 @@ function CreateDocketView({batchType,createBatch,speciesLibrary,companyLibrary,a
               <label style={S.label}>Processing Plant</label>
               <input style={S.input} value={processingPlant} onChange={e=>setProcessingPlant(e.target.value)} />
             </div>
-
             <div>
               <label style={S.label}>Catch Certificate #</label>
               <input style={S.input} value={catchCertNo} onChange={e=>setCatchCertNo(e.target.value)} placeholder="e.g. CATCH-123" />
@@ -568,9 +538,7 @@ function CreateDocketView({batchType,createBatch,speciesLibrary,companyLibrary,a
 }
 
 // ─── BATCH DETAIL ─────────────────────────────────────────────────────────────
-function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,closeBatch,addToast,_speciesLibrary,_companyLibrary}:any) {
-  void _speciesLibrary;
-  void _companyLibrary;
+function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,closeBatch,addToast,speciesLibrary,companyLibrary}:any) {
   const [landingCertNo,setLandingCertNo] = useState(batch.landingCertNo||"");
   const [processingCertNo,setProcessingCertNo] = useState(batch.processingCertNo||"");
   const [catchCertNo,setCatchCertNo] = useState(batch.catchCertNo||"");
@@ -588,12 +556,10 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
 
   const encoded = encodeBatch({...batch,landingCertNo,processingCertNo,catchCertNo,healthCertNo,transportLegs});
   const publicUrl = `${RESOLVER_BASE}/?receipt=${batch.id}&d=${encoded}`;
-  // ↑ Points to live domain always — phones can scan this from anywhere
 
   return (
     <div style={S.card}>
       <div style={S.cardPad}>
-        {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap" as const,gap:10,marginBottom:16}}>
           <div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
@@ -615,7 +581,6 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
 
         <div style={S.divider} />
 
-        {/* Core Info */}
         <div style={{...S.formGrid,marginBottom:16}}>
           <KV label="From" value={batch.fromCompany} />
           <KV label="To" value={batch.toCompany} />
@@ -626,7 +591,6 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
           {batch.processingPlant && <KV label="Processing Plant" value={batch.processingPlant} />}
         </div>
 
-        {/* Species */}
         <div style={{marginBottom:16}}>
           <h3 style={{fontSize:13,fontWeight:800,marginBottom:10,opacity:0.7,textTransform:"uppercase" as const,letterSpacing:1}}>Species & Weight</h3>
           {(batch.speciesLines||[]).map((l:SpeciesLine,i:number)=>(
@@ -643,7 +607,6 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
 
         <div style={S.divider} />
 
-        {/* Certifications */}
         <h3 style={{fontSize:13,fontWeight:800,marginBottom:12,opacity:0.7,textTransform:"uppercase" as const,letterSpacing:1}}>Certification Numbers</h3>
         <div style={S.formGrid}>
           {[["Landing Cert No",landingCertNo,setLandingCertNo],["Processing Cert No",processingCertNo,setProcessingCertNo],["Catch Cert No",catchCertNo,setCatchCertNo],["Health Cert No",healthCertNo,setHealthCertNo]].map(([label,val,setter]:any)=>(
@@ -656,7 +619,6 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
 
         <div style={S.divider} />
 
-        {/* Transport */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <h3 style={{fontSize:13,fontWeight:800,opacity:0.7,textTransform:"uppercase" as const,letterSpacing:1}}>Transport / Handover Logs</h3>
           <button style={{...S.btn,fontSize:11,padding:"6px 10px"}} onClick={addLeg}>+ Add Leg</button>
@@ -681,12 +643,10 @@ function BatchDetail({batch,updateBatch,deleteBatch,archiveBatch,unarchiveBatch,
 
         <div style={S.divider} />
 
-        {/* Notes */}
         {batch.notes && <div style={{marginBottom:16}}><h3 style={{fontSize:13,fontWeight:800,marginBottom:8,opacity:0.7,textTransform:"uppercase" as const,letterSpacing:1}}>Notes</h3><p style={{fontSize:13,lineHeight:1.6,opacity:0.8}}>{batch.notes}</p></div>}
 
         <div style={S.divider} />
 
-        {/* QR Code */}
         <div>
           <h3 style={{fontSize:13,fontWeight:800,marginBottom:12,opacity:0.7,textTransform:"uppercase" as const,letterSpacing:1}}>QR Code — Receipt</h3>
           <div style={{background:"#fff",padding:16,borderRadius:12,display:"inline-block",marginBottom:10}}>
